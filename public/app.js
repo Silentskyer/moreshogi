@@ -21,9 +21,15 @@ const handBlackEl = document.querySelector("#handBlack .hand-pieces");
 let game = new ShogiGame();
 let mode = "local";
 let selected = null; // { type: 'board'|'drop', from?, piece? }
-let socket = null;
+let ably = null;
+let channel = null;
 let onlineSide = null;
 let pendingMoves = [];
+let onlineRoom = null;
+let isHost = false;
+const clientId =
+  (typeof crypto !== "undefined" && crypto.randomUUID && crypto.randomUUID()) ||
+  `guest-${Math.random().toString(36).slice(2, 10)}`;
 
 function initBoard() {
   boardEl.innerHTML = "";
@@ -54,7 +60,7 @@ function updateModeUI() {
 function statusText() {
   if (mode === "online") {
     const sideLabel = onlineSide ? (onlineSide === "black" ? "先手" : "後手") : "—";
-    const roomLabel = roomIdInput.value ? `房間 ${roomIdInput.value}` : "未連線";
+    const roomLabel = onlineRoom ? `房間 ${onlineRoom}` : "未連線";
     return `線上對戰 · ${roomLabel} · 你是 ${sideLabel} · ${game.turn === "black" ? "先手" : "後手"} 行棋`;
   }
   if (mode === "ai") {
@@ -194,17 +200,15 @@ function onCellClick(x, y) {
       chosen = answer && promoteMove ? promoteMove : movesTo.find((m) => !m.promote) || movesTo[0];
     }
 
+    const res = game.applyMove(chosen);
+    if (!res.ok) {
+      alert(`非法：${res.reason}`);
+      return;
+    }
     if (mode === "online") {
-      socket?.send(JSON.stringify({ type: "move", move: chosen }));
-    } else {
-      const res = game.applyMove(chosen);
-      if (!res.ok) {
-        alert(`非法：${res.reason}`);
-        return;
-      }
-      if (mode === "ai") {
-        window.setTimeout(aiMove, 300);
-      }
+      channel?.publish("move", { move: chosen, senderId: clientId, color: onlineSide });
+    } else if (mode === "ai") {
+      window.setTimeout(aiMove, 300);
     }
     selected = null;
     pendingMoves = [];
@@ -222,45 +226,99 @@ function aiMove() {
   render();
 }
 
-function connectOnline(action, roomId = null) {
-  if (socket) {
-    socket.close();
-    socket = null;
+function connectOnline(roomId, host) {
+  if (!window.Ably) {
+    alert("Ably 載入失敗，請確認網路或 CDN。");
+    return;
   }
 
-  socket = new WebSocket(`${location.origin.replace("http", "ws")}`);
-  socket.addEventListener("open", () => {
-    socket.send(JSON.stringify({ type: action, roomId }));
-  });
-  socket.addEventListener("message", (event) => {
-    const msg = JSON.parse(event.data);
-    if (msg.type === "room_joined") {
-      onlineSide = msg.side;
-      syncFromServer(msg);
-    } else if (msg.type === "state") {
-      syncFromServer(msg);
-    } else if (msg.type === "illegal") {
-      alert(`非法：${msg.reason}`);
-    }
-  });
+  if (ably) {
+    ably.close();
+    ably = null;
+  }
+
+  onlineRoom = roomId;
+  isHost = host;
+  onlineSide = host ? "black" : "white";
+  roomIdInput.value = roomId;
+  resetGame();
+
+  ably = new Ably.Realtime({ authUrl: `/api/ably-auth?clientId=${clientId}` });
+  channel = ably.channels.get(`room:${roomId}`);
+
+  channel.subscribe((message) => handleOnlineMessage(message));
+  channel.presence.enter({ side: onlineSide, clientId });
+
+  if (!host) {
+    channel.publish("sync_request", { senderId: clientId });
+  }
 }
 
-function syncFromServer(payload) {
-  game.board = payload.board;
-  game.hands = payload.hands;
-  game.turn = payload.turn;
-  game.result = payload.result;
-  game.lastMove = payload.lastMove;
-  if (Array.isArray(payload.history)) {
-    game.moveHistory = payload.history.map((h) => h.move);
+function handleOnlineMessage(message) {
+  const { name, data } = message;
+  if (data?.senderId === clientId) return;
+
+  if (name === "sync_request" && isHost) {
+    channel.publish("sync_state", { senderId: clientId, state: buildStatePayload() });
+    return;
   }
-  if (payload.roomId) {
-    roomIdInput.value = payload.roomId;
+
+  if (name === "sync_state" && !isHost && data?.state) {
+    applyRemoteState(data.state);
+    return;
   }
+
+  if (name === "move" && data?.move) {
+    const res = game.applyMove(data.move);
+    if (!res.ok) return;
+    render();
+    return;
+  }
+
+  if (name === "resign" && data?.color) {
+    if (!game.result) {
+      game.result = { winner: data.color === "black" ? "white" : "black", reason: "resign" };
+    }
+    render();
+    return;
+  }
+
+  if (name === "impasse" && data?.color) {
+    game.declareImpasse(data.color);
+    render();
+  }
+}
+
+function buildStatePayload() {
+  return {
+    board: game.board,
+    hands: game.hands,
+    turn: game.turn,
+    result: game.result,
+    lastMove: game.lastMove,
+    moveHistory: game.moveHistory,
+  };
+}
+
+function applyRemoteState(state) {
+  game.board = state.board;
+  game.hands = state.hands;
+  game.turn = state.turn;
+  game.result = state.result;
+  game.lastMove = state.lastMove;
+  game.moveHistory = state.moveHistory || [];
   render();
 }
 
 modeSelect.addEventListener("change", () => {
+  if (mode === "online") {
+    ably?.close();
+    ably = null;
+    channel = null;
+    onlineSide = null;
+    onlineRoom = null;
+    isHost = false;
+  }
   mode = modeSelect.value;
   updateModeUI();
   resetGame();
@@ -270,7 +328,8 @@ createRoomBtn.addEventListener("click", () => {
   mode = "online";
   modeSelect.value = "online";
   updateModeUI();
-  connectOnline("create_room");
+  const roomId = Math.random().toString(36).slice(2, 8).toUpperCase();
+  connectOnline(roomId, true);
 });
 
 joinRoomBtn.addEventListener("click", () => {
@@ -279,12 +338,16 @@ joinRoomBtn.addEventListener("click", () => {
   mode = "online";
   modeSelect.value = "online";
   updateModeUI();
-  connectOnline("join_room", roomId);
+  connectOnline(roomId, false);
 });
 
 resignBtn.addEventListener("click", () => {
   if (mode === "online") {
-    socket?.send(JSON.stringify({ type: "resign" }));
+    if (!game.result) {
+      game.result = { winner: onlineSide === "black" ? "white" : "black", reason: "resign" };
+      channel?.publish("resign", { senderId: clientId, color: onlineSide });
+      render();
+    }
   } else if (!game.result) {
     game.result = { winner: game.turn === "black" ? "white" : "black", reason: "resign" };
     render();
@@ -293,7 +356,13 @@ resignBtn.addEventListener("click", () => {
 
 impasseBtn.addEventListener("click", () => {
   if (mode === "online") {
-    socket?.send(JSON.stringify({ type: "declare_impasse" }));
+    const res = game.declareImpasse(game.turn);
+    if (!res.ok) {
+      alert(`無法宣言：${res.reason}`);
+      return;
+    }
+    channel?.publish("impasse", { senderId: clientId, color: onlineSide });
+    render();
   } else {
     const res = game.declareImpasse(game.turn);
     if (!res.ok) alert(`無法宣言：${res.reason}`);
@@ -303,9 +372,12 @@ impasseBtn.addEventListener("click", () => {
 
 resetBtn.addEventListener("click", () => {
   if (mode === "online") {
-    socket?.close();
-    socket = null;
+    ably?.close();
+    ably = null;
+    channel = null;
     onlineSide = null;
+    onlineRoom = null;
+    isHost = false;
     mode = "local";
     modeSelect.value = "local";
     updateModeUI();
