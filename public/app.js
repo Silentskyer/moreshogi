@@ -42,10 +42,16 @@ function initBoard() {
       cell.className = "cell";
       cell.dataset.x = x;
       cell.dataset.y = y;
-      cell.addEventListener("click", () => onCellClick(x, y));
       boardEl.appendChild(cell);
     }
   }
+  boardEl.onclick = (event) => {
+    const cell = event.target.closest(".cell");
+    if (!cell) return;
+    const x = Number(cell.dataset.x);
+    const y = Number(cell.dataset.y);
+    onCellClick(x, y);
+  };
 }
 
 function resetGame() {

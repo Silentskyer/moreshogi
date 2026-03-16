@@ -134,6 +134,7 @@ h1 {
   inset: 12px;
   border: 1px solid rgba(36, 26, 20, 0.3);
   pointer-events: none;
+  z-index: 0;
 }
 
 .cell {
@@ -145,6 +146,7 @@ h1 {
   font-weight: 700;
   cursor: pointer;
   position: relative;
+  z-index: 1;
 }
 
 .cell.highlight {
@@ -164,7 +166,9 @@ h1 {
   background: rgba(255, 255, 255, 0.55);
   border: 1px solid rgba(36, 26, 20, 0.55);
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
+  pointer-events: none;
   transition: transform 0.2s ease;
+  position: relative;
 }
 
 .piece.black {
@@ -175,6 +179,29 @@ h1 {
 .piece.white {
   color: #2f4f6b;
   border-color: rgba(47, 79, 107, 0.7);
+}
+
+.piece.black::after,
+.piece.white::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+}
+
+.piece.black::after {
+  top: -6px;
+  transform: translateX(-50%);
+  border-bottom: 8px solid rgba(31, 27, 22, 0.8);
+}
+
+.piece.white::after {
+  bottom: -6px;
+  transform: translateX(-50%) rotate(180deg);
+  border-bottom: 8px solid rgba(47, 79, 107, 0.8);
 }
 
 .piece.promoted {
