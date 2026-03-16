@@ -159,19 +159,27 @@ h1 {
 
 .piece {
   display: inline-block;
+  padding: 2px 5px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(36, 26, 20, 0.55);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
   transition: transform 0.2s ease;
 }
 
 .piece.black {
   color: #1f1b16;
+  border-color: rgba(31, 27, 22, 0.7);
 }
 
 .piece.white {
   color: #2f4f6b;
+  border-color: rgba(47, 79, 107, 0.7);
 }
 
 .piece.promoted {
   color: var(--accent);
+  border-color: rgba(180, 60, 47, 0.8);
 }
 
 .board[data-view="white"] {

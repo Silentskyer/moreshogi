@@ -213,7 +213,7 @@ export class ShogiGame {
 
   generatePseudoMoves(color, opts = {}) {
     const moves = [];
-    const dirFactor = color === "black" ? 1 : -1;
+    const dirFactor = color === "black" ? -1 : 1;
     const addMove = (from, to) => {
       const piece = this.board[from.y][from.x];
       if (!piece) return;
