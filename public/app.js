@@ -19,6 +19,8 @@ const resetBtn = document.getElementById("reset");
 const handWhiteEl = document.querySelector("#handWhite .hand-pieces");
 const handBlackEl = document.querySelector("#handBlack .hand-pieces");
 
+const MAX_LOG_ITEMS = 200;
+
 let game = new ShogiGame();
 let mode = "local";
 let selected = null; // { type: 'board'|'drop', from?, piece? }
@@ -167,9 +169,16 @@ function clearHandSelection() {
 function renderMoves() {
   moveLogEl.innerHTML = "";
   const history = game.moveHistory || [];
-  history.forEach((move, idx) => {
+  const startIndex = Math.max(0, history.length - MAX_LOG_ITEMS);
+  if (startIndex > 0) {
+    const ellipsis = document.createElement("li");
+    ellipsis.textContent = "…";
+    moveLogEl.appendChild(ellipsis);
+  }
+  history.slice(startIndex).forEach((move, idx) => {
     const item = document.createElement("li");
-    item.textContent = `${idx + 1}. ${move.color === "black" ? "先" : "後"} ${formatMove(move)}`;
+    const moveNumber = startIndex + idx + 1;
+    item.textContent = `${moveNumber}. ${move.color === "black" ? "先" : "後"} ${formatMove(move)}`;
     moveLogEl.appendChild(item);
   });
 }

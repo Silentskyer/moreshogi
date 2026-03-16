@@ -141,10 +141,8 @@ export class ShogiGame {
     this.lastMove = null;
     this.moveHistory = [];
     this.positionCounts = new Map();
-    this.positionHistory = [];
     const key = encodePositionKey(this);
-    this.positionCounts.set(key, 1);
-    this.positionHistory.push({ posKey: key, checkingSide: null });
+    this.positionCounts.set(key, { count: 1, lastChecks: [null] });
   }
 
   static initialBoard() {
@@ -183,8 +181,12 @@ export class ShogiGame {
     copy.result = this.result ? { ...this.result } : null;
     copy.lastMove = this.lastMove ? { ...this.lastMove } : null;
     copy.moveHistory = this.moveHistory.map((m) => ({ ...m }));
-    copy.positionCounts = new Map(this.positionCounts);
-    copy.positionHistory = this.positionHistory.map((h) => ({ ...h }));
+    copy.positionCounts = new Map(
+      [...this.positionCounts.entries()].map(([k, v]) => [
+        k,
+        { count: v.count, lastChecks: [...v.lastChecks] },
+      ])
+    );
     return copy;
   }
 
@@ -417,10 +419,12 @@ export class ShogiGame {
       next.moveHistory.push({ ...move, color });
 
       const posKey = encodePositionKey(next);
-      const count = (next.positionCounts.get(posKey) || 0) + 1;
-      next.positionCounts.set(posKey, count);
       const checkingSide = next.isInCheck(enemy) ? color : null;
-      next.positionHistory.push({ posKey, checkingSide });
+      const entry = next.positionCounts.get(posKey) || { count: 0, lastChecks: [] };
+      entry.count += 1;
+      entry.lastChecks.push(checkingSide);
+      if (entry.lastChecks.length > 4) entry.lastChecks.shift();
+      next.positionCounts.set(posKey, entry);
 
       const enemyMoves = next.generateLegalMoves(enemy, { ignoreUchifuzume: true });
       if (enemyMoves.length === 0) {
@@ -431,10 +435,9 @@ export class ShogiGame {
         }
       }
 
-      if (!next.result && count >= 4) {
-        const occurrences = next.positionHistory.filter((h) => h.posKey === posKey);
-        const lastFour = occurrences.slice(-4);
-        const perpetual = lastFour.length === 4 && lastFour.every((h) => h.checkingSide === color);
+      if (!next.result && entry.count >= 4) {
+        const perpetual =
+          entry.lastChecks.length === 4 && entry.lastChecks.every((side) => side === color);
         if (perpetual) {
           next.result = { winner: enemy, reason: "perpetual_check" };
         } else {
