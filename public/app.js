@@ -82,8 +82,8 @@ function render() {
   let viewColor = defaultView;
   if (viewMode === "black" || viewMode === "white") {
     viewColor = viewMode;
-  } else if (mode === "online" && onlineSide) {
-    viewColor = onlineSide;
+  } else {
+    viewColor = game.turn;
   }
   boardEl.dataset.view = viewColor;
   statusEl.textContent = statusText();
