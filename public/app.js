@@ -5,6 +5,7 @@ const statusEl = document.getElementById("status");
 const resultEl = document.getElementById("result");
 const moveLogEl = document.getElementById("moveLog");
 const modeSelect = document.getElementById("modeSelect");
+const viewSelect = document.getElementById("viewSelect");
 const aiControls = document.getElementById("aiControls");
 const aiDepthSelect = document.getElementById("aiDepth");
 const onlineControls = document.getElementById("onlineControls");
@@ -27,6 +28,8 @@ let onlineSide = null;
 let pendingMoves = [];
 let onlineRoom = null;
 let isHost = false;
+const defaultView = "black";
+let viewMode = "auto";
 const clientId =
   (typeof crypto !== "undefined" && crypto.randomUUID && crypto.randomUUID()) ||
   `guest-${Math.random().toString(36).slice(2, 10)}`;
@@ -70,6 +73,13 @@ function statusText() {
 }
 
 function render() {
+  let viewColor = defaultView;
+  if (viewMode === "black" || viewMode === "white") {
+    viewColor = viewMode;
+  } else if (mode === "online" && onlineSide) {
+    viewColor = onlineSide;
+  }
+  boardEl.dataset.view = viewColor;
   statusEl.textContent = statusText();
 
   const cells = boardEl.querySelectorAll(".cell");
@@ -81,7 +91,7 @@ function render() {
     cell.innerHTML = "";
     if (piece) {
       const span = document.createElement("span");
-      span.className = `piece ${piece.color}`;
+      span.className = `piece ${piece.color}${piece.promoted ? " promoted" : ""}`;
       span.textContent = SHOGI_UI.pieceLabel(piece);
       cell.appendChild(span);
     }
@@ -126,6 +136,7 @@ function renderHands() {
     entries.forEach(([type, count]) => {
       const item = document.createElement("div");
       item.className = "hand-piece";
+      item.dataset.color = color;
       item.textContent = `${SHOGI_UI.PIECE_NAMES[type]} × ${count}`;
       item.addEventListener("click", () => {
         if (game.turn !== color || (mode === "online" && color !== onlineSide)) return;
@@ -322,6 +333,11 @@ modeSelect.addEventListener("change", () => {
   mode = modeSelect.value;
   updateModeUI();
   resetGame();
+});
+
+viewSelect.addEventListener("change", () => {
+  viewMode = viewSelect.value;
+  render();
 });
 
 createRoomBtn.addEventListener("click", () => {
