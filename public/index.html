@@ -1,0 +1,82 @@
+﻿<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>WebShogi | 日式將棋</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600;700&family=Zen+Antique+Soft&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main class="scene">
+      <header class="top">
+        <div>
+          <h1>将棋</h1>
+          <p class="subtitle">日式對局 · 規則完整 · 線上對戰</p>
+        </div>
+        <div class="status" id="status">準備中</div>
+      </header>
+
+      <section class="controls">
+        <div class="mode">
+          <label>模式</label>
+          <select id="modeSelect">
+            <option value="local">單機對弈</option>
+            <option value="ai">對電腦</option>
+            <option value="online">線上對戰</option>
+          </select>
+        </div>
+        <div class="ai" id="aiControls">
+          <label>AI 深度</label>
+          <select id="aiDepth">
+            <option value="1">淺</option>
+            <option value="2" selected>標準</option>
+            <option value="3">進階</option>
+          </select>
+        </div>
+        <div class="online" id="onlineControls">
+          <button id="createRoom">建立房間</button>
+          <input id="roomId" placeholder="輸入房間碼" />
+          <button id="joinRoom">加入房間</button>
+        </div>
+        <div class="actions">
+          <button id="resign">投了</button>
+          <button id="impasse">持將棋宣言</button>
+          <button id="reset">重新開始</button>
+        </div>
+      </section>
+
+      <section class="board-area">
+        <div class="hand" id="handWhite">
+          <h3>後手持駒</h3>
+          <div class="hand-pieces" data-color="white"></div>
+        </div>
+
+        <div class="board" id="board"></div>
+
+        <div class="hand" id="handBlack">
+          <h3>先手持駒</h3>
+          <div class="hand-pieces" data-color="black"></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div>
+          <h3>對局記錄</h3>
+          <ol id="moveLog"></ol>
+        </div>
+        <div>
+          <h3>勝負結果</h3>
+          <div id="result">—</div>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
