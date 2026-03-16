@@ -235,7 +235,35 @@ export class ShogiGame {
         if (!piece || piece.color !== color) continue;
 
         const type = piece.type;
-        if (type === "R" || type === "B" || type === "L") {
+        if (piece.promoted && (type === "R" || type === "B")) {
+          const baseDirs = DIRECTIONS[type];
+          baseDirs.forEach(([dx, dy]) => {
+            let nx = x + dx;
+            let ny = y + dy;
+            while (inBounds(nx, ny)) {
+              const target = this.board[ny][nx];
+              if (!target) {
+                addMove({ x, y }, { x: nx, y: ny });
+              } else {
+                if (target.color !== color) {
+                  addMove({ x, y }, { x: nx, y: ny });
+                }
+                break;
+              }
+              nx += dx;
+              ny += dy;
+            }
+          });
+          DIRECTIONS.K.forEach(([dx, dy]) => {
+            const nx = x + dx;
+            const ny = y + dy;
+            if (!inBounds(nx, ny)) return;
+            const target = this.board[ny][nx];
+            if (!target || target.color !== color) {
+              addMove({ x, y }, { x: nx, y: ny });
+            }
+          });
+        } else if (type === "R" || type === "B" || type === "L") {
           const dirs = DIRECTIONS[type];
           dirs.forEach(([dx, dy]) => {
             let nx = x + dx;
@@ -258,34 +286,6 @@ export class ShogiGame {
           DIRECTIONS.G.forEach(([dx, dy]) => {
             const nx = x + dx;
             const ny = y + dy * dirFactor;
-            if (!inBounds(nx, ny)) return;
-            const target = this.board[ny][nx];
-            if (!target || target.color !== color) {
-              addMove({ x, y }, { x: nx, y: ny });
-            }
-          });
-        } else if (piece.promoted && (type === "R" || type === "B")) {
-          const baseDirs = DIRECTIONS[type];
-          baseDirs.forEach(([dx, dy]) => {
-            let nx = x + dx;
-            let ny = y + dy;
-            while (inBounds(nx, ny)) {
-              const target = this.board[ny][nx];
-              if (!target) {
-                addMove({ x, y }, { x: nx, y: ny });
-              } else {
-                if (target.color !== color) {
-                  addMove({ x, y }, { x: nx, y: ny });
-                }
-                break;
-              }
-              nx += dx;
-              ny += dy;
-            }
-          });
-          DIRECTIONS.K.forEach(([dx, dy]) => {
-            const nx = x + dx;
-            const ny = y + dy;
             if (!inBounds(nx, ny)) return;
             const target = this.board[ny][nx];
             if (!target || target.color !== color) {

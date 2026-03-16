@@ -287,7 +287,10 @@ function handleOnlineMessage(message) {
 
   if (name === "move" && data?.move) {
     const res = game.applyMove(data.move);
-    if (!res.ok) return;
+    if (!res.ok) {
+      channel?.publish("sync_request", { senderId: clientId });
+      return;
+    }
     render();
     return;
   }
