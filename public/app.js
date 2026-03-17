@@ -233,6 +233,7 @@ function onCellClick(x, y) {
     }
     if (mode === "online") {
       channel?.publish("move", { move: chosen, senderId: clientId, color: onlineSide });
+      channel?.publish("state", { state: buildStatePayload(), senderId: clientId });
     } else if (mode === "ai") {
       window.setTimeout(aiMove, 300);
     }
@@ -277,6 +278,10 @@ function connectOnline(roomId, host) {
 
   if (!host) {
     channel.publish("sync_request", { senderId: clientId });
+  } else {
+    channel.presence.subscribe("enter", () => {
+      channel.publish("sync_state", { senderId: clientId, state: buildStatePayload() });
+    });
   }
 }
 
@@ -290,6 +295,11 @@ function handleOnlineMessage(message) {
   }
 
   if (name === "sync_state" && !isHost && data?.state) {
+    applyRemoteState(data.state);
+    return;
+  }
+
+  if (name === "state" && data?.state) {
     applyRemoteState(data.state);
     return;
   }
